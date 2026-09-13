@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 545 100" width="100%" height="100%" fill="none">
+  <!-- PPNPN Logo (BUMN Concept) -->
+  <!-- 1. Open P (Navy) -->
+  <path
+    d="M 10 0 L 64 0 A 35 35 0 0 1 99 35 A 35 35 0 0 1 64 70 L 36 70 L 36 100 L 10 100 L 10 46 L 64 46 A 11 11 0 0 0 75 35 A 11 11 0 0 0 64 24 L 10 24 Z"
+    fill="#0A2B64"
+  />
+
+  <!-- 2. Closed P (Navy) -->
+  <path
+    d="M 121 0 L 175 0 A 35 35 0 0 1 210 35 A 35 35 0 0 1 175 70 L 147 70 L 147 100 L 121 100 L 121 0 Z M 147 24 L 175 24 A 11 11 0 0 1 186 35 A 11 11 0 0 1 175 46 L 147 46 Z"
+    fill="#0A2B64"
+    fill-rule="evenodd"
+  />
+
+  <!-- 3. Cyan Inverted Arch n (Cyan) -->
+  <path
+    d="M 232 42 A 42 42 0 0 1 316 42 L 316 100 L 290 100 L 290 42 A 16 16 0 0 0 258 42 L 258 100 L 232 100 Z"
+    fill="#009BB9"
+  />
+
+  <!-- 4. Closed P (Navy) -->
+  <path
+    d="M 338 0 L 392 0 A 35 35 0 0 1 427 35 A 35 35 0 0 1 392 70 L 364 70 L 364 100 L 338 100 L 338 0 Z M 364 24 L 392 24 A 11 11 0 0 1 403 35 A 11 11 0 0 1 392 46 L 364 46 Z"
+    fill="#0A2B64"
+    fill-rule="evenodd"
+  />
+
+  <!-- 5. Navy Inverted Arch n (Navy) -->
+  <path
+    d="M 449 42 A 42 42 0 0 1 533 42 L 533 100 L 507 100 L 507 42 A 16 16 0 0 0 475 42 L 475 100 L 449 100 Z"
+    fill="#0A2B64"
+  />
+</svg>

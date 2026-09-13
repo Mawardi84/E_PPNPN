@@ -1,0 +1,11 @@
+{
+  "name": "Absensi Digital PPNPN",
+  "description": "Aplikasi absensi digital untuk PPNPN dengan fitur pemindai wajah, lokasi GPS real-time, portal admin pengawas, dan sistem proteksi anti-fake GPS.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

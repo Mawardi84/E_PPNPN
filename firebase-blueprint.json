@@ -1,0 +1,132 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the application",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["cleaning_service", "petugas_ptsp", "pramubakti", "satpam", "admin"]
+        },
+        "createdAt": {
+          "type": "number"
+        },
+        "nik": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": ["email", "role", "createdAt"]
+    },
+    "AttendanceRecord": {
+      "title": "Attendance Record",
+      "description": "An attendance record",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        },
+        "userEmail": {
+          "type": "string"
+        },
+        "userRole": {
+          "type": "string",
+          "enum": ["cleaning_service", "petugas_ptsp", "pramubakti", "satpam", "admin"]
+        },
+        "type": {
+          "type": "string",
+          "enum": ["check-in", "check-out", "izin", "sakit"]
+        },
+        "timestamp": {
+          "type": "number"
+        },
+        "location": {
+          "type": "object"
+        },
+        "photoUrl": {
+          "type": "string",
+          "maxLength": 1048576 
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "antiFakeGpsStatus": {
+          "type": "string"
+        },
+        "isMockGps": {
+          "type": "boolean"
+        },
+        "shiftName": {
+          "type": "string"
+        },
+        "isLate": {
+          "type": "boolean"
+        },
+        "lateMinutes": {
+          "type": "number"
+        }
+      },
+      "required": ["userId", "type", "timestamp"]
+    },
+    "KinerjaRecord": {
+      "title": "Kinerja Record",
+      "description": "A daily task completion record",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        },
+        "userEmail": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["cleaning_service", "petugas_ptsp", "pramubakti", "satpam", "admin"]
+        },
+        "tasks": {
+          "type": "array",
+          "maxLength": 20
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "photoUrl": {
+          "type": "string",
+          "maxLength": 1048576
+        }
+      },
+      "required": ["userId", "timestamp", "role", "tasks"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles containing roles"
+    },
+    "attendance/{recordId}": {
+      "schema": "AttendanceRecord",
+      "description": "Records of clock ins/outs and leaves"
+    },
+    "kinerja/{recordId}": {
+      "schema": "KinerjaRecord",
+      "description": "Records of daily task accomplishments"
+    }
+  }
+}

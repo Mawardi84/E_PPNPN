@@ -1,0 +1,107 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    
+    function incoming() {
+      return request.resource.data;
+    }
+    
+    function existing() {
+      return resource.data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'fxmawardi@gmail.com' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+    
+    // User Profile Validation
+    function isValidUser(data) {
+      return data.keys().hasAll(['email', 'role', 'createdAt']) && 
+             data.keys().size() <= 3 &&
+             data.email is string && data.email.size() <= 100 &&
+             data.role in ['cleaning_service', 'petugas_ptsp', 'pramubakti', 'satpam', 'admin'] &&
+             data.createdAt is number;
+    }
+    
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isSignedIn() && isAdmin();
+      // Allow user creation by themselves (or triggered via auth functions)
+      allow create: if isSignedIn() && 
+                    request.auth.uid == userId && 
+                    isValidUser(incoming());
+      
+      // Allow users to update their role
+      allow update: if isSignedIn() &&
+                    request.auth.uid == userId &&
+                    isValidUser(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['role']);
+    }
+
+    // Attendance Record Validation
+    function isValidAttendance(data) {
+      return data.keys().hasAll(['userId', 'type', 'timestamp']) &&
+             data.keys().size() <= 16 &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.type in ['check-in', 'check-out', 'izin', 'sakit'] &&
+             data.timestamp is number &&
+             // Optional fields validation
+             (!data.keys().hasAny(['userRole']) || data.userRole in ['cleaning_service', 'petugas_ptsp', 'pramubakti', 'satpam', 'admin']) &&
+             (!data.keys().hasAny(['photoUrl']) || (data.photoUrl is string && data.photoUrl.size() <= 1048576)) &&
+             (!data.keys().hasAny(['notes']) || (data.notes is string && data.notes.size() <= 500)) &&
+             (!data.keys().hasAny(['location']) || data.location is map);
+    }
+    
+    match /attendance/{recordId} {
+      allow read, list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && 
+                    isValidId(recordId) && 
+                    isValidAttendance(incoming()) &&
+                    exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      // Attendance logs shouldn't be updated or deleted in this app.
+      allow update, delete: if false;
+    }
+    
+    // Kinerja Record Validation
+    function isValidKinerja(data) {
+      return data.keys().hasAll(['userId', 'timestamp', 'role', 'tasks']) &&
+             data.keys().size() <= 10 &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.timestamp is number &&
+             data.role in ['cleaning_service', 'petugas_ptsp', 'pramubakti', 'satpam', 'admin'] &&
+             data.tasks is list && data.tasks.size() <= 20 && data.tasks.size() > 0 &&
+             (!data.keys().hasAny(['photoUrl']) || (data.photoUrl is string && data.photoUrl.size() <= 1048576)) &&
+             (!data.keys().hasAny(['notes']) || (data.notes is string && data.notes.size() <= 500));
+    }
+    
+    match /kinerja/{recordId} {
+      allow read, list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && 
+                    isValidId(recordId) && 
+                    isValidKinerja(incoming()) &&
+                    exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      // Kinerja reports shouldn't be updated or deleted in this app.
+      allow update, delete: if false;
+    }
+
+    match /settings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isAdmin();
+    }
+  }
+}

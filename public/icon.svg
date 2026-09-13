@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gradient: Deep BUMN Navy Blue -->
+    <linearGradient id="appBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0E2F73"/>
+      <stop offset="100%" stop-color="#051538"/>
+    </linearGradient>
+
+    <!-- Soft Ambient Glow -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-opacity="0.3" flood-color="#000000"/>
+    </filter>
+  </defs>
+
+  <!-- Squircle Rounded App Icon Container -->
+  <rect width="512" height="512" rx="120" fill="url(#appBg)"/>
+
+  <!-- Crisp Inner White Card for Logo Display -->
+  <rect x="36" y="160" width="440" height="192" rx="40" fill="#FFFFFF" filter="url(#glow)"/>
+
+  <!-- Embedded Exact PPNPN Logo -->
+  <g transform="translate(56, 216) scale(0.73)">
+    <!-- 1. Open P (Navy) -->
+    <path
+      d="M 10 0 L 64 0 A 35 35 0 0 1 99 35 A 35 35 0 0 1 64 70 L 36 70 L 36 100 L 10 100 L 10 46 L 64 46 A 11 11 0 0 0 75 35 A 11 11 0 0 0 64 24 L 10 24 Z"
+      fill="#0A2B64"
+    />
+
+    <!-- 2. Closed P (Navy) -->
+    <path
+      d="M 121 0 L 175 0 A 35 35 0 0 1 210 35 A 35 35 0 0 1 175 70 L 147 70 L 147 100 L 121 100 L 121 0 Z M 147 24 L 175 24 A 11 11 0 0 1 186 35 A 11 11 0 0 1 175 46 L 147 46 Z"
+      fill="#0A2B64"
+      fill-rule="evenodd"
+    />
+
+    <!-- 3. Cyan Arch n (Cyan) -->
+    <path
+      d="M 232 42 A 42 42 0 0 1 316 42 L 316 100 L 290 100 L 290 42 A 16 16 0 0 0 258 42 L 258 100 L 232 100 Z"
+      fill="#009BB9"
+    />
+
+    <!-- 4. Closed P (Navy) -->
+    <path
+      d="M 338 0 L 392 0 A 35 35 0 0 1 427 35 A 35 35 0 0 1 392 70 L 364 70 L 364 100 L 338 100 L 338 0 Z M 364 24 L 392 24 A 11 11 0 0 1 403 35 A 11 11 0 0 1 392 46 L 364 46 Z"
+      fill="#0A2B64"
+      fill-rule="evenodd"
+    />
+
+    <!-- 5. Navy Arch n (Navy) -->
+    <path
+      d="M 449 42 A 42 42 0 0 1 533 42 L 533 100 L 507 100 L 507 42 A 16 16 0 0 0 475 42 L 475 100 L 449 100 Z"
+      fill="#0A2B64"
+    />
+  </g>
+</svg>
