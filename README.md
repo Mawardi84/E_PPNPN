@@ -23,6 +23,11 @@ Aplikasi web modern berbasis mobile-first untuk pencatatan presensi digital dan 
 * **Penyimpanan Persisten Firestore**: Data absensi dan log kinerja tersimpan di cloud secara real-time.
 * **Keamanan Data Pengguna**: Kontrol akses ketat (`firestore.rules`) yang mengisolasi data per pegawai.
 
+### 4. Panel Admin & Statistik Bulanan
+* **Dashboard Admin Terpusat**: Manajemen presensi seluruh pegawai, verifikasi izin, dan pemantauan status kehadiran.
+* **Statistik Bulanan (Recharts)**: Grafik tren kehadiran 7 hari terakhir dan diagram persebaran kehadiran berdasarkan peran secara visual dan interaktif.
+* **Ekspor Laporan**: Fitur unduh laporan absensi dan kinerja dalam format PDF profesional.
+
 ---
 
 ## 🛠️ Tumpukan Teknologi (*Tech Stack*)
@@ -41,6 +46,7 @@ Aplikasi web modern berbasis mobile-first untuk pencatatan presensi digital dan 
 ```text
 ├── src/
 │   ├── components/
+│   │   ├── AdminDashboard.tsx   # Panel admin, statistik bulanan, & manajemen presensi
 │   │   ├── AttendanceCard.tsx   # Kartu riwayat presensi beranimasi
 │   │   ├── CameraCapture.tsx    # Antarmuka kamera dengan laser scanner biometrik
 │   │   ├── EKinerja.tsx         # Modul pelaporan tugas harian & bukti kerja

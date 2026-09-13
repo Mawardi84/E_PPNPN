@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { collection, query, getDocs, doc, setDoc } from 'firebase/firestore';
+import { useState, useEffect, useMemo } from 'react';
+import { collection, query, getDocs, doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db, FIREBASE_API_KEY } from '../firebase';
 import { UserProfile } from '../types';
 
@@ -44,10 +44,27 @@ import {
   X, 
   RefreshCw, 
   Lock,
-  Layers
+  Layers,
+  TrendingUp,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { HolidayCalendar } from './HolidayCalendar';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip as RechartsTooltip, 
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend
+} from 'recharts';
 
 interface AdminDashboardProps {
   records: AttendanceRecord[];
@@ -68,7 +85,7 @@ export function AdminDashboard({
   onUpdateAntiFakeSettings,
   onBackToApp,
 }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'attendance' | 'kinerja' | 'geofence' | 'security' | 'employees'>('attendance');
+  const [activeTab, setActiveTab] = useState<'attendance' | 'kinerja' | 'geofence' | 'security' | 'employees' | 'statistics' | 'holidays'>('attendance');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | Role>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'check-in' | 'check-out' | 'izin' | 'sakit'>('all');
@@ -107,6 +124,13 @@ export function AdminDashboard({
   const [addEmployeeLoading, setAddEmployeeLoading] = useState(false);
   const [addEmployeeError, setAddEmployeeError] = useState<string | null>(null);
 
+  // Edit Employee State
+  const [editingEmployee, setEditingEmployee] = useState<UserProfile | null>(null);
+  const [editEmployeeName, setEditEmployeeName] = useState('');
+  const [editEmployeeRole, setEditEmployeeRole] = useState<Role>('cleaning_service');
+  const [editEmployeeLoading, setEditEmployeeLoading] = useState(false);
+  const [editEmployeeError, setEditEmployeeError] = useState<string | null>(null);
+
   useEffect(() => {
     if (activeTab === 'employees') {
       const fetchEmployees = async () => {
@@ -115,7 +139,7 @@ export function AdminDashboard({
           const snapshot = await getDocs(q);
           const empList: UserProfile[] = [];
           snapshot.forEach(doc => {
-            empList.push(doc.data() as UserProfile);
+            empList.push({ ...doc.data() as UserProfile, id: doc.id });
           });
           setEmployees(empList.sort((a, b) => b.createdAt - a.createdAt));
         } catch (err) {
@@ -154,6 +178,7 @@ export function AdminDashboard({
 
       const localId = data.localId;
       const newProfile: UserProfile = {
+        id: localId,
         nik: newEmployeeNik,
         name: newEmployeeName,
         role: newEmployeeRole,
@@ -178,6 +203,43 @@ export function AdminDashboard({
       }
     } finally {
       setAddEmployeeLoading(false);
+    }
+  };
+
+  const handleUpdateEmployee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEmployee || !editingEmployee.id) return;
+    
+    setEditEmployeeLoading(true);
+    setEditEmployeeError(null);
+    try {
+      await updateDoc(doc(db, 'users', editingEmployee.id), {
+        name: editEmployeeName,
+        role: editEmployeeRole
+      });
+      
+      setEmployees(prev => prev.map(emp => 
+        emp.id === editingEmployee.id 
+          ? { ...emp, name: editEmployeeName, role: editEmployeeRole }
+          : emp
+      ));
+      setEditingEmployee(null);
+    } catch (err) {
+      console.error(err);
+      setEditEmployeeError("Gagal mengupdate data pegawai.");
+    } finally {
+      setEditEmployeeLoading(false);
+    }
+  };
+
+  const handleDeleteEmployee = async (id: string) => {
+    if (!window.confirm("Yakin ingin menghapus pegawai ini? Data login tidak dapat dikembalikan.")) return;
+    try {
+      await deleteDoc(doc(db, 'users', id));
+      setEmployees(prev => prev.filter(emp => emp.id !== id));
+    } catch (err) {
+      console.error("Gagal menghapus", err);
+      alert("Gagal menghapus pegawai.");
     }
   };
 
@@ -207,6 +269,50 @@ export function AdminDashboard({
   const countPulang = records.filter(r => r.type === 'check-out').length;
   const countIzinSakit = records.filter(r => r.type === 'izin' || r.type === 'sakit').length;
   const countMockDetected = records.filter(r => r.isMockGps || r.antiFakeGpsStatus === 'blocked' || r.antiFakeGpsStatus === 'suspicious').length;
+
+  // Chart Data Preparation
+  const chartData = useMemo(() => {
+    // Generate an array of the last 7 days
+    const last7Days = Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      return {
+        dateStr: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+        dateKey: d.toISOString().split('T')[0],
+      };
+    });
+
+    const data = last7Days.map(dayInfo => {
+      const dayRecords = records.filter(r => {
+        // Handle both string ISO dates and number timestamps
+        const recordDateStr = typeof r.timestamp === 'number' 
+          ? new Date(r.timestamp).toISOString().split('T')[0] 
+          : String(r.timestamp).split('T')[0];
+        return recordDateStr === dayInfo.dateKey;
+      });
+      return {
+        name: dayInfo.dateStr,
+        Hadir: dayRecords.filter(r => r.type === 'check-in').length,
+        Izin: dayRecords.filter(r => r.type === 'izin' || r.type === 'sakit').length,
+        Terlambat: dayRecords.filter(r => r.type === 'check-in' && r.isLate).length
+      };
+    });
+    return data;
+  }, [records]);
+
+  const rolePerformanceData = useMemo(() => {
+    const roles: Role[] = ['cleaning_service', 'satpam', 'petugas_ptsp', 'pramubakti'];
+    return roles.map(role => {
+      const roleRecords = records.filter(r => r.userRole === role);
+      const attendanceCount = roleRecords.filter(r => r.type === 'check-in').length;
+      return {
+        name: role === 'cleaning_service' ? 'CS' : role === 'satpam' ? 'Satpam' : role === 'petugas_ptsp' ? 'PTSP' : 'Pramubakti',
+        Hadir: attendanceCount,
+      };
+    }).filter(data => data.Hadir > 0);
+  }, [records]);
+
+  const COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#6366f1'];
 
   const handleSaveGeofence = (e: React.FormEvent) => {
     e.preventDefault();
@@ -461,6 +567,30 @@ export function AdminDashboard({
           </button>
 
           <button
+            onClick={() => setActiveTab('statistics')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+              activeTab === 'statistics'
+                ? 'bg-white text-[#0A2B64] shadow-sm'
+                : 'text-blue-100 hover:bg-white/10'
+            }`}
+          >
+            <TrendingUp className="w-4 h-4" />
+            <span>Statistik Bulanan</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('holidays')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+              activeTab === 'holidays'
+                ? 'bg-white text-[#0A2B64] shadow-sm'
+                : 'text-blue-100 hover:bg-white/10'
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            <span>Kalender Libur & Cuti</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('geofence')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
               activeTab === 'geofence'
@@ -579,6 +709,8 @@ export function AdminDashboard({
                   <option value="all">Semua Peran</option>
                   <option value="cleaning_service">Cleaning Service</option>
                   <option value="satpam">Satuan Pengamanan</option>
+                  <option value="petugas_ptsp">Petugas PTSP</option>
+                  <option value="pramubakti">Pramubakti</option>
                 </select>
 
                 {/* Status Filter */}
@@ -956,6 +1088,58 @@ export function AdminDashboard({
                 </form>
               )}
 
+              {editingEmployee && (
+                <form onSubmit={handleUpdateEmployee} className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-slate-800">Edit Data Pegawai: {editingEmployee.nik}</h3>
+                    <button type="button" onClick={() => setEditingEmployee(null)} className="text-slate-400 hover:text-slate-600">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  
+                  {editEmployeeError && (
+                    <div className="p-2.5 bg-rose-50 text-rose-700 text-xs font-semibold rounded border border-rose-200">
+                      {editEmployeeError}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Nama Lengkap</label>
+                      <input
+                        type="text"
+                        value={editEmployeeName}
+                        onChange={(e) => setEditEmployeeName(e.target.value)}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="Nama Pegawai"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Peran / Jabatan</label>
+                      <select
+                        value={editEmployeeRole}
+                        onChange={(e) => setEditEmployeeRole(e.target.value as Role)}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                      >
+                        <option value="cleaning_service">Cleaning Service</option>
+                        <option value="satpam">Satpam</option>
+                        <option value="petugas_ptsp">Petugas PTSP</option>
+                        <option value="pramubakti">Pramubakti</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={editEmployeeLoading}
+                    className="w-full py-2 bg-blue-600 text-white font-bold text-xs rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                  >
+                    {editEmployeeLoading ? 'Menyimpan...' : 'Simpan Perubahan'}
+                  </button>
+                </form>
+              )}
+
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
@@ -964,12 +1148,13 @@ export function AdminDashboard({
                       <th className="py-2.5 px-4 font-bold">Nama Pegawai</th>
                       <th className="py-2.5 px-4 font-bold">Peran</th>
                       <th className="py-2.5 px-4 font-bold">Email Sistem</th>
+                      <th className="py-2.5 px-4 font-bold text-right">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="text-sm">
                     {employees.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="py-6 text-center text-slate-400 text-xs">
+                        <td colSpan={5} className="py-6 text-center text-slate-400 text-xs">
                           Belum ada data pegawai yang terdaftar.
                         </td>
                       </tr>
@@ -991,6 +1176,26 @@ export function AdminDashboard({
                             </span>
                           </td>
                           <td className="py-3 px-4 text-slate-500 text-xs">{emp.email}</td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex justify-end gap-2">
+                              <button
+                                onClick={() => {
+                                  setEditingEmployee(emp);
+                                  setEditEmployeeName(emp.name);
+                                  setEditEmployeeRole(emp.role);
+                                }}
+                                className="text-xs font-bold text-blue-600 hover:text-blue-800 transition"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => emp.id && handleDeleteEmployee(emp.id)}
+                                className="text-xs font-bold text-rose-600 hover:text-rose-800 transition"
+                              >
+                                Hapus
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       ))
                     )}
@@ -1259,6 +1464,87 @@ export function AdminDashboard({
               )}
             </div>
           </div>
+        )}
+
+        {/* TAB 5: STATISTIK BULANAN */}
+        {activeTab === 'statistics' && (
+          <div className="space-y-6">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col items-center justify-center space-y-4">
+               <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 mb-2">
+                  <TrendingUp className="w-8 h-8" />
+               </div>
+               <h2 className="text-lg font-bold text-slate-800">Laporan Statistik Bulanan</h2>
+               <p className="text-sm text-slate-500 text-center max-w-md">
+                 Grafik tren kehadiran, perbandingan izin, dan persentase kehadiran per peran.
+               </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Tren Kehadiran Mingguan */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <h3 className="text-sm font-bold text-slate-800 mb-4">Tren Kehadiran (7 Hari Terakhir)</h3>
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                      <RechartsTooltip 
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                      <Bar dataKey="Hadir" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Hadir" maxBarSize={40} />
+                      <Bar dataKey="Izin" fill="#f59e0b" radius={[4, 4, 0, 0]} name="Izin/Sakit" maxBarSize={40} />
+                      <Bar dataKey="Terlambat" fill="#ef4444" radius={[4, 4, 0, 0]} name="Terlambat" maxBarSize={40} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Persebaran Presensi */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <h3 className="text-sm font-bold text-slate-800 mb-4">Distribusi Kehadiran Berdasarkan Peran</h3>
+                <div className="h-64 w-full flex items-center justify-center">
+                  {rolePerformanceData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={rolePerformanceData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="Hadir"
+                          nameKey="name"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          labelLine={false}
+                          style={{ fontSize: '10px', fontWeight: 'bold' }}
+                        >
+                          {rolePerformanceData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip 
+                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="text-center text-slate-400 text-sm">
+                      <PieChart className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p>Belum ada data kehadiran</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 6: KALENDER HARI LIBUR */}
+        {activeTab === 'holidays' && (
+          <HolidayCalendar isAdmin={true} />
         )}
       </main>
 

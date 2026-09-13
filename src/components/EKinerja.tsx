@@ -144,6 +144,48 @@ export function EKinerja({ role, records, onSave }: EKinerjaProps) {
     setUploadError(null);
   };
 
+  const processTaskImageFile = (taskId: string, file: File) => {
+    if (!file.type.startsWith('image/')) {
+      alert('Hanya file gambar (JPG, PNG, WebP) yang diizinkan.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_HEIGHT = 800;
+        let targetWidth = img.width;
+        let targetHeight = img.height;
+        if (targetHeight > MAX_HEIGHT) {
+          targetWidth = Math.floor(targetWidth * (MAX_HEIGHT / targetHeight));
+          targetHeight = MAX_HEIGHT;
+        }
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+          const compressed = canvas.toDataURL('image/jpeg', 0.6);
+          setTasks(prev => prev.map(t => t.id === taskId ? { ...t, photoUrl: compressed } : t));
+        }
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleTaskFileChange = (taskId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processTaskImageFile(taskId, file);
+    }
+  };
+
+  const handleRemoveTaskPhoto = (taskId: string) => {
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, photoUrl: undefined } : t));
+  };
+
   const handleSubmit = () => {
     const record: KinerjaRecord = {
       id: Math.random().toString(36).substring(2, 9),
@@ -181,32 +223,56 @@ export function EKinerja({ role, records, onSave }: EKinerjaProps) {
           <h2 id="tasks-heading" className="font-bold text-gray-800 mb-4">Daftar Pekerjaan</h2>
           <div className="space-y-3" role="group" aria-labelledby="tasks-heading">
             {tasks.map(task => (
-              <motion.button 
-                key={task.id}
-                role="checkbox"
-                whileTap={{ scale: 0.98 }}
-                aria-checked={task.completed}
-                aria-label={`${task.name}, status: ${task.completed ? 'selesai dikerjakan' : 'belum dikerjakan'}`}
-                onClick={() => toggleTask(task.id)}
-                className={`flex items-center gap-3 w-full text-left p-2.5 rounded-xl border transition-colors focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none ${
-                  task.completed ? 'bg-emerald-50/50 border-emerald-100' : 'bg-white border-transparent hover:bg-gray-50'
-                }`}
-              >
-                {task.completed ? (
-                  <motion.div
-                    initial={{ scale: 0.7 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 25 }}
+              <div key={task.id} className={`rounded-xl border transition-colors ${task.completed ? 'bg-emerald-50/50 border-emerald-100' : 'bg-white border-transparent hover:bg-gray-50'}`}>
+                <div className="flex items-start justify-between p-2.5">
+                  <motion.button 
+                    role="checkbox"
+                    whileTap={{ scale: 0.98 }}
+                    aria-checked={task.completed}
+                    aria-label={`${task.name}, status: ${task.completed ? 'selesai dikerjakan' : 'belum dikerjakan'}`}
+                    onClick={() => toggleTask(task.id)}
+                    className="flex items-center gap-3 w-full text-left focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
                   >
-                    <CheckSquare className="w-6 h-6 text-emerald-600 shrink-0" aria-hidden="true" />
-                  </motion.div>
-                ) : (
-                  <Square className="w-6 h-6 text-gray-300 shrink-0" aria-hidden="true" />
+                    {task.completed ? (
+                      <motion.div
+                        initial={{ scale: 0.7 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                      >
+                        <CheckSquare className="w-6 h-6 text-emerald-600 shrink-0" aria-hidden="true" />
+                      </motion.div>
+                    ) : (
+                      <Square className="w-6 h-6 text-gray-300 shrink-0" aria-hidden="true" />
+                    )}
+                    <span className={`text-sm font-medium transition-colors ${task.completed ? 'text-gray-500 line-through' : 'text-gray-800'}`}>
+                      {task.name}
+                    </span>
+                  </motion.button>
+                  {task.completed && !task.photoUrl && (
+                    <label className="shrink-0 ml-2 cursor-pointer p-1.5 text-blue-600 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors" aria-label={`Unggah foto untuk ${task.name}`}>
+                      <ImagePlus className="w-4 h-4" />
+                      <input type="file" accept="image/*" onChange={(e) => handleTaskFileChange(task.id, e)} className="sr-only" />
+                    </label>
+                  )}
+                </div>
+                {task.photoUrl && (
+                  <div className="px-10 pb-3 pt-1">
+                    <div className="relative inline-block border border-gray-200 rounded-lg overflow-hidden h-20 w-32 bg-gray-900 group">
+                      <img src={task.photoUrl} alt={`Bukti ${task.name}`} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTaskPhoto(task.id)}
+                          className="p-1.5 bg-rose-600 text-white rounded-md hover:bg-rose-700"
+                          title="Hapus foto"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 )}
-                <span className={`text-sm font-medium transition-colors ${task.completed ? 'text-gray-500 line-through' : 'text-gray-800'}`}>
-                  {task.name}
-                </span>
-              </motion.button>
+              </div>
             ))}
           </div>
         </section>

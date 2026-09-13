@@ -58,6 +58,7 @@ export interface KinerjaTask {
   id: string;
   name: string;
   completed: boolean;
+  photoUrl?: string;
 }
 
 export interface KinerjaRecord {
@@ -80,9 +81,20 @@ export interface AntiFakeGpsSettings {
 }
 
 export interface UserProfile {
+  id?: string;
   nik: string;
   name: string;
   role: Role;
   email: string;
   createdAt: number;
+}
+
+export type HolidayType = 'national' | 'religious' | 'joint_leave';
+
+export interface HolidayItem {
+  id: string;
+  date: string; // YYYY-MM-DD
+  title: string;
+  type: HolidayType;
+  description?: string;
 }

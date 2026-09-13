@@ -8,6 +8,7 @@ import { Login } from './components/Login';
 import { SplashScreen } from './components/SplashScreen';
 import { PpnPnLogo } from './components/PpnPnLogo';
 import { AdminDashboard } from './components/AdminDashboard';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { auth, db, loginWithGoogle, logoutUser, handleFirestoreError, OperationType } from './firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { collection, query, where, onSnapshot, setDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
@@ -830,12 +831,14 @@ export default function App() {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col font-sans max-w-md mx-auto shadow-xl">
         <Login onLoginGoogle={loginWithGoogle} />
+        <OfflineIndicator />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+      <OfflineIndicator />
       <AnimatePresence mode="wait">
         
         {appState === 'dashboard' && (
